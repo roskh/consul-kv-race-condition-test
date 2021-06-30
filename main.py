@@ -13,13 +13,13 @@ def split_string(s):
 def iterate_data(log_prefix, pair, delay):
     a, b = pair
 
-    logging.info(f"{log_prefix}: sending chunk 1 - '{a}'")
+    logging.debug(f"{log_prefix}: sending chunk 1 - '{a}'")
     yield str.encode(a)
 
-    logging.info(f"{log_prefix}: sleeping for {delay}s")
+    logging.debug(f"{log_prefix}: sleeping for {delay}s")
     time.sleep(delay)
 
-    logging.info(f"{log_prefix}: woke up, sending chunk 2 - '{b}'")
+    logging.debug(f"{log_prefix}: woke up, sending chunk 2 - '{b}'")
     yield str.encode(b)
 
 def update_key(url, data):
@@ -44,27 +44,40 @@ def fetch_key(url):
     logging.info(f"actual key '{data.decode('utf-8')}'")
 
 KEY = "a/race/condition"
-URL = "http://localhost:8500/v1/kv/" + KEY
+URL_1 = "http://localhost:8500/v1/kv/" + KEY
+URL_2 = "http://localhost:9500/v1/kv/" + KEY
+URL_3 = "http://localhost:10500/v1/kv/" + KEY
+
+VAL_A = "SEQ-A" * 100
+VAL_B = "val b" * 100
+PREFIX_A = "R-A"
+PREFIX_B = "R-B"
 
 if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s:\t%(message)s -- %(created).7fs', datefmt='%M:%S', level=logging.INFO)
 
-    DELAY_REQ_A = 0.5
-    DELAY_REQ_B = 0.5
-    VAL_A = "SEQ-A"
-    VAL_B = "val b"
+    URL_A = URL_1
+    URL_B = URL_3
+    URL_MASTER = URL_2
 
-    t1 = Thread(target = exec_consul_write, args = ("R-A", URL, VAL_A, DELAY_REQ_A))
-    t2 = Thread(target = exec_consul_write, args = ("R-B", URL, VAL_B, DELAY_REQ_B))
+    DURATION_REQ_A = 0.5
+    DURATION_REQ_B = 0.5
+    DELAY_REQ_B = 0.1
+    DELAY_GET_KEY = 0.5
 
-    t1.start()
-    time.sleep(0.10)
-    t2.start()
+    tA = Thread(target = exec_consul_write, args = (PREFIX_A, URL_A, VAL_A, DURATION_REQ_A))
+    tB = Thread(target = exec_consul_write, args = (PREFIX_B, URL_B, VAL_B, DURATION_REQ_B))
 
-    t1.join()
-    t2.join()
+    tA.start()
+    if DELAY_REQ_B != 0.0:
+        logging.debug(f"{PREFIX_B}: Delaying by {DELAY_REQ_B}s")
+        time.sleep(DELAY_REQ_B)
+    tB.start()
 
-    time.sleep(0.1)
-    fetch_key(URL)
+    tA.join()
+    tB.join()
+
+    time.sleep(DELAY_GET_KEY)
+    fetch_key(URL_MASTER)
 
     logging.info(f"Finished!")
