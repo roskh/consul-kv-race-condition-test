@@ -24,3 +24,7 @@ Given http requests A and B and values 'a' and 'b' as in the script.
 - The value cannot be corrupet, even if A and B are made at the same time, the value will take either 'a' or 'b' and not a corrupted mix.
 - When A and B are made to the same master server: if a request ends slighly after the final value it is the final value.
 - When A and B are made to different follower servers: if A and B end at the same time the final value can be either of 'a' or 'b'.
+
+## Misc
+
+- You can check that the script will actually stream the bytes by running `nc -k -l 4444` and sending a request there.
