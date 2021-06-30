@@ -29,44 +29,49 @@ def update_key(url, data):
     if code != 200:
         raise NameError("bad code consul KV update: " + str(code))
 
+    return response.read().decode('utf-8') == 'true'
+    
+
 def exec_consul_write(log_prefix, url, value, delay):
     logging.info(f"{log_prefix}: Starting request on {url} to update to '{value}'")
 
     iterator = iterate_data(log_prefix, split_string(value), delay=delay)
-    update_key(url, iterator)
-
-    logging.info(f"{log_prefix}: Request done")
+    keyUpdated = update_key(url, iterator)
+    if keyUpdated:
+        logging.info(f"{log_prefix}: key updated. Request Done")
+    else:
+        logging.info(f"{log_prefix}: key NOT updated. Request Done")
 
 def fetch_key(url):
-    url = f"{url}?raw=true"
+    url = f"{url}&raw=true"
     data = request.urlopen(url).read()
 
     logging.info(f"actual key '{data.decode('utf-8')}'")
 
 KEY = "a/race/condition"
-URL_1 = "http://localhost:8500/v1/kv/" + KEY
-URL_2 = "http://localhost:9500/v1/kv/" + KEY
-URL_3 = "http://localhost:10500/v1/kv/" + KEY
+CAS = "cas=808"
+PATH = f"/v1/kv/{KEY}?{CAS}"
+URL_1 = "http://localhost:8500" + PATH
+URL_2 = "http://localhost:9500" + PATH
+URL_3 = "http://localhost:10500" + PATH
 
-VAL_A = "SEQ-A" * 100
-VAL_B = "val b" * 100
+VAL_A = "SEQ-A1" * 1
+VAL_B = "val b2" * 1
 PREFIX_A = "R-A"
 PREFIX_B = "R-B"
 
 if __name__ == "__main__":
-    logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s:\t%(message)s -- %(created).7fs', datefmt='%M:%S', level=logging.INFO)
+    logging.basicConfig(format='%(asctime)s.%(msecs)03d %(levelname)s:\t%(message)s', datefmt='%M:%S', level=logging.INFO)
 
-    URL_A = URL_1
-    URL_B = URL_3
     URL_MASTER = URL_2
 
-    DURATION_REQ_A = 0.5
-    DURATION_REQ_B = 0.5
+    DURATION_REQ_A = 1
+    DURATION_REQ_B = 0.3
     DELAY_REQ_B = 0.1
     DELAY_GET_KEY = 0.5
 
-    tA = Thread(target = exec_consul_write, args = (PREFIX_A, URL_A, VAL_A, DURATION_REQ_A))
-    tB = Thread(target = exec_consul_write, args = (PREFIX_B, URL_B, VAL_B, DURATION_REQ_B))
+    tA = Thread(target = exec_consul_write, args = (PREFIX_A, URL_1, VAL_A, DURATION_REQ_A))
+    tB = Thread(target = exec_consul_write, args = (PREFIX_B, URL_2, VAL_B, DURATION_REQ_B))
 
     tA.start()
     if DELAY_REQ_B != 0.0:
@@ -78,6 +83,6 @@ if __name__ == "__main__":
     tB.join()
 
     time.sleep(DELAY_GET_KEY)
-    fetch_key(URL_MASTER)
+    fetch_key(URL_2)
 
     logging.info(f"Finished!")
