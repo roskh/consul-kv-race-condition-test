@@ -1,0 +1,47 @@
+# based on https://learn.hashicorp.com/tutorials/consul/docker-compose-datacenter
+version: '3.7'
+
+services:
+  
+  consul-server1:
+    image: hashicorp/consul:1.10.0
+    container_name: consul-server1
+    restart: always
+    volumes:
+     - ./docker/server1.json:/consul/config/server1.json:ro
+    networks:
+      - consul
+    ports:
+      - "8500:8500"
+      - "8600:8600/tcp"
+      - "8600:8600/udp"
+    command: "agent -bootstrap-expect=3"
+
+  consul-server2:
+    image: hashicorp/consul:1.10.0
+    container_name: consul-server2
+    restart: always
+    volumes:
+     - ./docker/server2.json:/consul/config/server2.json:ro
+    networks:
+      - consul
+    ports:
+      - "9500:8500"
+    command: "agent -bootstrap-expect=3"
+
+  consul-server3:
+    image: hashicorp/consul:1.10.0
+    container_name: consul-server3
+    restart: always
+    volumes:
+     - ./docker/server3.json:/consul/config/server3.json:ro
+    networks:
+      - consul
+    ports:
+      - "10500:8500"
+    command: "agent -bootstrap-expect=3"
+
+networks:
+  consul:
+    driver: bridge
+
